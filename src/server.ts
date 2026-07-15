@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { MongoClient, ServerApiVersion, Collection } from "mongodb";
+import { MongoClient, ServerApiVersion, Collection, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import cors from "cors";
 dotenv.config();
@@ -54,6 +54,97 @@ app.get("/", (req: Request, res: Response) => {
   res.send("🚀 TypeScript Express Server is Running");
 });
 
+
+
+app.get("/api/products", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.query;
+
+    // Get single product by ID
+    if (id) {
+      const productId = id as string;
+
+      if (!ObjectId.isValid(productId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product ID",
+        });
+      }
+
+      const product = await productCollection.findOne({
+        _id: new ObjectId(productId),
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: product,
+      });
+    }
+
+    // Get all products
+    const products = await productCollection.find().toArray();
+
+    return res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Products API Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
+
+
+// Delete api 
+app.delete(
+  "/api/products/:id",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = req.params.id as string; 
+
+      
+      if (!ObjectId.isValid(id)) {
+        res.status(400).send({ success: false, message: "Invalid ID format" });
+        return;
+      }
+
+     
+      const result = await productCollection.deleteOne({
+        _id: new ObjectId(id) 
+      });
+
+     
+      if (result.deletedCount === 0) {
+        res.status(404).send({ success: false, message: "Product not found in database" });
+        return;
+      }
+
+    
+      res.send({ success: true, deletedCount: result.deletedCount });
+      
+    } catch (error: any) {
+      
+      console.error("Server Delete Error:", error); 
+      
+      res.status(500).send({ 
+        success: false, 
+        message: error.message || "Internal Server Error" 
+      });
+    }
+  }
+);
+
 // Create Product
 app.post(
   "/api/products",
@@ -84,6 +175,10 @@ app.post(
     }
   }
 );
+
+
+
+
 
 // Connect MongoDB
 async function connectDB() {

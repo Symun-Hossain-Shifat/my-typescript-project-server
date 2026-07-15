@@ -33,7 +33,9 @@ interface Product {
   category: string;
   createdAt?: Date;
   updatedAt?: Date;
-}
+} 
+
+
 
 // MongoDB Client
 const client = new MongoClient(uri, {
@@ -137,6 +139,56 @@ app.delete(
       
       console.error("Server Delete Error:", error); 
       
+      res.status(500).send({ 
+        success: false, 
+        message: error.message || "Internal Server Error" 
+      });
+    }
+  }
+);
+
+// Patch api 
+app.patch(
+  "/api/products/:id",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const idStr = req.params.id as string;
+
+      
+      if (!ObjectId.isValid(idStr)) {
+        res.status(400).send({ success: false, message: "Invalid Product ID format" });
+        return;
+      }
+
+      const id = new ObjectId(idStr);
+      const Data = req.body;
+
+      
+      const newdata = {
+        $set: {
+          title: Data.title,
+          category: Data.category,
+          shortDescription: Data.shortDescription,
+          description: Data.description,
+          price: Data.price,
+          image: Data.image,
+          updatedAt: new Date() 
+        },
+      };
+
+      const result = await productCollection.updateOne(
+        { _id: id },
+        newdata
+      );
+
+      if (result.matchedCount === 0) {
+        res.status(404).send({ success: false, message: "Product not found" });
+        return;
+      }
+
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error("PATCH error:", error);
       res.status(500).send({ 
         success: false, 
         message: error.message || "Internal Server Error" 
